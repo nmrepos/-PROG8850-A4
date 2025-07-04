@@ -4,6 +4,7 @@ Environment with MySQL, Python, Node and Docker.
 ## Quick start
 ```bash
 pip install -r requirements.txt
+sudo service mysql start
 ansible-playbook up.yaml
 pytest dbtests.py
 ```

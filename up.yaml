@@ -1,26 +1,80 @@
-- hosts: localhost
+- hosts: 127.0.0.1
   connection: local
+  become: true
   gather_facts: false
+
+  vars:
+    flyway_version: "11.8.2"
+    flyway_base: "https://repo1.maven.org/maven2/org/flywaydb/flyway-commandline/{{ flyway_version }}"
+
+  pre_tasks:
+    - name: Ensure curl & tar are present
+      apt:
+        name:
+          - curl
+          - tar
+        update_cache: true
+
+    - name: Download Flyway CLI {{ flyway_version }}
+      get_url:
+        url: "{{ flyway_base }}/flyway-commandline-{{ flyway_version }}-linux-x64.tar.gz"
+        dest: /tmp/flyway.tar.gz
+
+    - name: Unpack Flyway
+      unarchive:
+        src: /tmp/flyway.tar.gz
+        dest: /opt/
+        remote_src: true
+      args:
+        creates: "/opt/flyway-{{ flyway_version }}"
+
+    - name: Symlink flyway into your PATH
+      file:
+        src: "/opt/flyway-{{ flyway_version }}/flyway"
+        dest: /usr/local/bin/flyway
+        state: link
+        mode: '0755'
+
   tasks:
-    - name: Start mysql service
-      ansible.builtin.service:
+    - name: Install MySQL server & Python DB bindings
+      apt:
+        name:
+          - mysql-server
+          - python3-mysqldb
+        update_cache: true
+
+    - name: Start MySQL service
+      service:
         name: mysql
         state: started
+        enabled: yes
 
     - name: Ensure subscribers database exists
       community.mysql.mysql_db:
         name: subscribers
         state: present
-        login_user: root
+        login_unix_socket: /var/run/mysqld/mysqld.sock
 
-    - name: Run flyway migrations
-      ansible.builtin.command:
-        cmd: >-
-          flyway -url=jdbc:mysql://localhost/subscribers -user=root \
-          -locations=filesystem:./migrations migrate
+    - name: Ensure Flyway user exists
+      community.mysql.mysql_user:
+        name: flyway
+        password: flyway_pass_123
+        host: localhost
+        priv: 'subscribers.*:ALL'
+        login_unix_socket: /var/run/mysqld/mysqld.sock
+        state: present
+
+    - name: Run Flyway migrations
+      command: >
+        flyway
+          -url=jdbc:mysql://localhost/subscribers
+          -user=flyway
+          -password=flyway_pass_123
+          -locations=filesystem:./migrations
+          migrate
       register: flyway_output
       changed_when: "'Successfully applied' in flyway_output.stdout"
 
-    - name: Show flyway output
-      ansible.builtin.debug:
+    - name: Show Flyway output
+      debug:
         var: flyway_output.stdout
