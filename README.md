@@ -1,17 +1,20 @@
 # PROG8850Template
-environment with mysql, python, node and docker
+Environment with MySQL, Python, Node and Docker.
 
-TLDR;
-
+## Quick start
 ```bash
 pip install -r requirements.txt
-sudo service mysql start
+ansible-playbook up.yaml
+pytest dbtests.py
+```
+When you are done working with the database run:
+```bash
+ansible-playbook down.yaml
 ```
 
-To access database:
-
+To access database manually:
 ```bash
 sudo mysql -u root
 ```
 
-happy mysql!
+Happy MySQL!

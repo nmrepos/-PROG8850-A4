@@ -1,0 +1,26 @@
+- hosts: localhost
+  connection: local
+  gather_facts: false
+  tasks:
+    - name: Start mysql service
+      ansible.builtin.service:
+        name: mysql
+        state: started
+
+    - name: Ensure subscribers database exists
+      community.mysql.mysql_db:
+        name: subscribers
+        state: present
+        login_user: root
+
+    - name: Run flyway migrations
+      ansible.builtin.command:
+        cmd: >-
+          flyway -url=jdbc:mysql://localhost/subscribers -user=root \
+          -locations=filesystem:./migrations migrate
+      register: flyway_output
+      changed_when: "'Successfully applied' in flyway_output.stdout"
+
+    - name: Show flyway output
+      ansible.builtin.debug:
+        var: flyway_output.stdout

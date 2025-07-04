@@ -1,0 +1,15 @@
+- hosts: localhost
+  connection: local
+  gather_facts: false
+  tasks:
+    - name: Dump subscriber data for next run
+      ansible.builtin.command:
+        cmd: >-
+          mysqldump subscribers subscriber --skip-triggers --no-create-info
+          > migrations/R__seed_data.sql
+      become: true
+
+    - name: Stop mysql service
+      ansible.builtin.service:
+        name: mysql
+        state: stopped
